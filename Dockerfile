@@ -5,8 +5,10 @@ WORKDIR /usr/src/app
 # Install dependencies
 FROM base AS install
 RUN mkdir -p /temp/dev
-COPY package.json bun.lockb /temp/dev/
-RUN cd /temp/dev && bun install --frozen-lockfile
+COPY package.json /temp/dev/
+# Copy lockfile if it exists (using a wildcard so it doesn't fail if missing)
+COPY bun.lock* /temp/dev/
+RUN cd /temp/dev && bun install
 
 # Copy dependencies and source code
 FROM base AS release
