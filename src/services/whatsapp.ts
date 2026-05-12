@@ -7,31 +7,27 @@ export const whatsapp = {
     variables: string[] = [],
     languageCode: string = 'en_US'
   ) {
-    const url = `https://graph.facebook.com/v25.0/${config.phoneNumberId}/messages`;
-
-    const template: any = {
-      name: templateName,
-      language: { code: languageCode }
-    };
-
-    // Only add components if we have variables
-    if (variables && variables.length > 0) {
-      template.components = [
-        {
-          type: 'body',
-          parameters: variables.map(v => ({ type: 'text', text: v }))
-        }
-      ];
+    if (config.watiToken && config.watiEndpoint) {
+      return this.sendWithWati(to, templateName, variables);
     }
 
+    // Meta Fallback
+    const url = `https://graph.facebook.com/v25.0/${config.phoneNumberId}/messages`;
     const body = {
       messaging_product: 'whatsapp',
       to,
       type: 'template',
-      template: template
+      template: {
+        name: templateName,
+        language: { code: languageCode },
+        components: variables.length > 0 ? [
+          {
+            type: 'body',
+            parameters: variables.map(v => ({ type: 'text', text: v }))
+          }
+        ] : []
+      }
     };
-
-    console.log('Sending WhatsApp message:', JSON.stringify(body, null, 2));
 
     const response = await fetch(url, {
       method: 'POST',
@@ -42,11 +38,39 @@ export const whatsapp = {
       body: JSON.stringify(body)
     });
 
+    return response.json();
+  },
+
+  async sendWithWati(to: string, templateName: string, variables: string[]) {
+    // Standard WATI v1 endpoint
+    const cleanNumber = to.replace('+', '').replace(/\s/g, '');
+    const url = `${config.watiEndpoint}/api/v1/sendTemplateMessage?whatsappNumber=${cleanNumber}`;
+
+    const body = {
+      template_name: templateName,
+      broadcast_name: `Bulk_Campaign_${new Date().toISOString().split('T')[0]}`,
+      parameters: variables.map((v, index) => ({
+        name: (index + 1).toString(), // Maps to {{1}}, {{2}}, etc.
+        value: v
+      }))
+    };
+
+    console.log(`[WATI] Dispatching to ${cleanNumber}:`, templateName);
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': config.watiToken.startsWith('Bearer ') ? config.watiToken : `Bearer ${config.watiToken}`
+      },
+      body: JSON.stringify(body)
+    });
+
     const data = await response.json() as any;
-    console.log('Meta API Response:', JSON.stringify(data, null, 2));
 
     if (!response.ok) {
-      throw new Error(data.error?.message || 'Failed to send WhatsApp message');
+      console.error('[WATI] Error:', data.message || 'Unknown error');
+      throw new Error(data.message || 'WATI API Error');
     }
 
     return data;

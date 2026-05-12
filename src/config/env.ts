@@ -4,6 +4,11 @@ export const config = {
   webhookVerifyToken: Bun.env.WEBHOOK_VERIFY_TOKEN || '',
   facebookAppId: Bun.env.META_APP_ID || '',
   facebookAppSecret: Bun.env.META_APP_SECRET || '',
+  
+  // WATI Configuration
+  watiToken: Bun.env.WATI_TOKEN || '',
+  watiEndpoint: Bun.env.WATI_ENDPOINT || '',
+  
   mongoUri: Bun.env.MONGO_URI || 'mongodb://localhost:27017/whatsapp_bulk',
   port: parseInt(Bun.env.PORT || '3000'),
 };
