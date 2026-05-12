@@ -3,29 +3,31 @@ import { config } from '../config/env';
 
 const webhook = new Hono();
 
-// Meta verification
+const VERIFY_TOKEN = config.webhookVerifyToken || "dev_outreach_secret";
+
+// Webhook verification
 webhook.get('/', (c) => {
   const mode = c.req.query('hub.mode');
   const token = c.req.query('hub.verify_token');
   const challenge = c.req.query('hub.challenge');
 
-  if (mode === 'subscribe' && token === config.webhookVerifyToken) {
-    console.log('Webhook verified');
+  if (mode === 'subscribe' && token === VERIFY_TOKEN) {
+    console.log('Webhook verified successfully!');
     return c.text(challenge || '');
   }
-
-  return c.text('Verification failed', 403);
+  
+  return c.text('Forbidden', 403);
 });
 
-// Inbound messages
+// Receive incoming events (messages, status, echoes)
 webhook.post('/', async (c) => {
   const body = await c.req.json();
   
-  // Log the payload for now as per plan
-  console.log('Received WhatsApp Webhook:', JSON.stringify(body, null, 2));
+  // Log the full body so you can see it in Render logs
+  console.log('--- WhatsApp Webhook Received ---');
+  console.log(JSON.stringify(body, null, 2));
 
-  // Acknowledge receipt
-  return c.json({ status: 'ok' });
+  return c.text('OK', 200);
 });
 
 export default webhook;
