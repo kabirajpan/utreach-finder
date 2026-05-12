@@ -1,49 +1,63 @@
 import { whatsapp } from '../services/whatsapp';
 
 interface MessageJob {
+  id: string;
   phone: string;
   templateName: string;
+  language: string;
   variables: string[];
+  status: 'queued' | 'sent' | 'failed';
+  sentAt?: string;
+  error?: string;
 }
 
-class MessageQueue {
-  private queue: MessageJob[] = [];
-  private isProcessing = false;
-  private delay = 100; // 100ms delay between messages (10 messages per second)
+const queue: MessageJob[] = [];
+export const logs: MessageJob[] = [];
+let isProcessing = false;
 
-  enqueue(job: MessageJob) {
-    this.queue.push(job);
-    if (!this.isProcessing) {
-      this.processQueue();
+export const addToQueue = (phone: string, templateName: string, language: string, variables: string[] = []) => {
+  const job: MessageJob = {
+    id: Math.random().toString(36).substring(7),
+    phone,
+    templateName,
+    language,
+    variables,
+    status: 'queued',
+    sentAt: new Date().toISOString()
+  };
+  queue.push(job);
+  logs.push(job);
+  
+  // Trigger processing if not already running
+  if (!isProcessing) {
+    processQueue();
+  }
+  
+  return job;
+};
+
+export const processQueue = async () => {
+  if (isProcessing || queue.length === 0) return;
+  
+  isProcessing = true;
+  const job = queue.shift();
+  
+  if (job) {
+    try {
+      console.log(`[Queue] Processing message to ${job.phone}...`);
+      await whatsapp.sendTemplateMessage(job.phone, job.templateName, job.variables, job.language);
+      job.status = 'sent';
+    } catch (error: any) {
+      job.status = 'failed';
+      job.error = error.message;
+      console.error(`[Queue] Failed to send to ${job.phone}:`, error.message);
     }
   }
-
-  private async processQueue() {
-    if (this.queue.length === 0) {
-      this.isProcessing = false;
-      return;
-    }
-
-    this.isProcessing = true;
-    const job = this.queue.shift();
-
-    if (job) {
-      try {
-        console.log(`Sending message to ${job.phone}...`);
-        const result = await whatsapp.sendTemplateMessage(
-          job.phone,
-          job.templateName,
-          job.variables
-        );
-        console.log(`Success for ${job.phone}:`, result.messages?.[0]?.id);
-      } catch (error: any) {
-        console.error(`Failed to send to ${job.phone}:`, error.message);
-      }
-    }
-
-    // Wait and process next
-    setTimeout(() => this.processQueue(), this.delay);
+  
+  isProcessing = false;
+  
+  // Continue processing next item immediately
+  if (queue.length > 0) {
+    setTimeout(processQueue, 100);
   }
-}
-
-export const messageQueue = new MessageQueue();
+};

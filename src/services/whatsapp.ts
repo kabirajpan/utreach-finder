@@ -31,6 +31,8 @@ export const whatsapp = {
       template: template
     };
 
+    console.log('Sending WhatsApp message:', JSON.stringify(body, null, 2));
+
     const response = await fetch(url, {
       method: 'POST',
       headers: {
