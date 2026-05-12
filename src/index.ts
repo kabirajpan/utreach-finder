@@ -4,6 +4,7 @@ import { cors } from 'hono/cors';
 import { config } from './config/env';
 import messages from './routes/messages';
 import webhook from './routes/webhook';
+import onboarding from './routes/whatsapp_onboarding';
 
 const app = new Hono();
 
@@ -15,6 +16,7 @@ app.use('*', cors());
 // We'll keep the messages route but make it stateless
 app.route('/messages', messages);
 app.route('/webhook', webhook);
+app.route('/whatsapp', onboarding);
 
 // Health check
 app.get('/', (c) => c.text('WhatsApp Bulk Messaging Backend is running (Stateless Mode)!'));
